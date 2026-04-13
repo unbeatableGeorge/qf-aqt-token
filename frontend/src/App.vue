@@ -144,6 +144,24 @@
           </div>
         </card>
 
+        <!-- Transfer Ownership (Owner Only) -->
+        <card v-if="isOwner" class="card-transfer-ownership">
+          <h3>👑 Transfer Ownership</h3>
+          <p class="warning-text">⚠️ This action is irreversible. The new owner will have full control over the contract.</p>
+          <input 
+            v-model="newOwnerAddr" 
+            placeholder="New owner address (0x...)"
+            class="input"
+            :disabled="isLoading"
+          />
+          <button @click="executeTransferOwnership" class="btn btn-danger" :disabled="isLoading || !newOwnerAddr">
+            {{ isLoading ? '⏳ Processing...' : 'Confirm Transfer Ownership' }}
+          </button>
+          <p v-if="newOwnerAddr" class="preview-text">
+            New owner: {{ formatAddress(newOwnerAddr) }}
+          </p>
+        </card>
+
         <!-- Transactions -->
         <card class="card-transactions">
           <h3>Recent Transactions</h3>
@@ -247,6 +265,7 @@ const mintAmount = ref('')
 const burnAmount = ref('')
 const transferTo = ref('')
 const transferAmount = ref('')
+const newOwnerAddr = ref('')
 
 // Computed properties
 const onCorrectChain = computed(() => currentChainId.value === CONFIG.SEPOLIA_CHAIN_ID)
@@ -528,6 +547,39 @@ const executeTransfer = async () => {
   }
 }
 
+const executeTransferOwnership = async () => {
+  if (!newOwnerAddr.value) return
+
+  // Validate address format
+  if (!ethers.isAddress(newOwnerAddr.value)) {
+    alert('Invalid Ethereum address')
+    return
+  }
+
+  const confirmed = confirm(
+    `⚠️ WARNING: You are about to transfer ownership to ${newOwnerAddr.value}.\n\nThis action is IRREVERSIBLE. Proceed?`
+  )
+
+  if (!confirmed) return
+
+  isLoading.value = true
+  try {
+    console.log('🔄 Transferring ownership to:', newOwnerAddr.value)
+    const tx = await contract.transferOwnership(newOwnerAddr.value)
+    recordTransaction('Transfer Ownership', tx.hash)
+    await tx.wait()
+    console.log('✅ Ownership transferred successfully')
+    alert('✅ Ownership transferred successfully!')
+    newOwnerAddr.value = ''
+    await loadContractData()
+  } catch (error) {
+    console.error('Error transferring ownership:', error)
+    alert('Failed to transfer ownership: ' + error.message)
+  } finally {
+    isLoading.value = false
+  }
+}
+
 const recordTransaction = (type, hash) => {
   recentTransactions.value.unshift({
     type,
@@ -690,6 +742,56 @@ onMounted(() => {
 
 .btn-small:hover {
   background: #5568d3;
+}
+
+.btn-danger {
+  background: #dc3545;
+  color: white;
+  padding: 10px 20px;
+  width: 100%;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  margin-top: 10px;
+  transition: all 0.3s;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: #c82333;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
+}
+
+.btn-danger:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.card-transfer-ownership {
+  background: linear-gradient(135deg, #fff5e6 0%, #ffe8cc 100%);
+  border-left: 4px solid #dc3545;
+}
+
+.warning-text {
+  background: #f8d7da;
+  border: 1px solid #f5c6cb;
+  color: #721c24;
+  padding: 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  margin-bottom: 15px;
+  line-height: 1.5;
+}
+
+.preview-text {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #ddd;
+  font-size: 12px;
+  color: #666;
+  font-family: monospace;
+  word-break: break-all;
 }
 
 .app-main {
