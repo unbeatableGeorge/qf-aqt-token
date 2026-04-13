@@ -1,10 +1,10 @@
-# RWA Token Demo - QF5208 Project
+# $AQT Token Demo - QF5208 Project
 
-A tokenized Real-World Asset (RWA) investment product demo deployed on the Sepolia testnet.
+A tokenized AI-Quant ETF (AQT) investment product demo deployed on the Sepolia testnet.
 
 ## 🎯 Project Overview
 
-This project demonstrates a complete tokenization solution for real-world assets, including:
+This project demonstrates a complete tokenization solution for AI-Quant ETF assets, including:
 
 - **Smart Contract**: ERC-20 token with ownership control, whitelist management, and transfer restrictions
 - **Frontend Dashboard**: Interactive web interface to manage tokens, view distributions, and track transactions

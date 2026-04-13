@@ -5,7 +5,7 @@
       <div class="nav-content">
         <div class="logo">
           <span class="logo-icon">⛓️</span>
-          <span class="logo-text">RWA Token</span>
+          <span class="logo-text">$AQT Token</span>
         </div>
         <div class="nav-links">
           <a href="#features">Features</a>
@@ -18,7 +18,7 @@
     <section class="hero">
       <div class="hero-content">
         <h1 class="hero-title">
-          Real World Asset<br />Tokenization
+          AI-Quant ETF<br />Tokenization
         </h1>
         <p class="hero-subtitle">
           Secure, transparent, and compliant asset distribution on blockchain
@@ -32,8 +32,8 @@
 
       <div class="hero-visual">
         <div class="floating-cube">
-          <div class="cube-face front">RWA</div>
-          <div class="cube-face back">RWAT</div>
+          <div class="cube-face front">AQT</div>
+          <div class="cube-face back">AQT</div>
           <div class="cube-face right">500K</div>
           <div class="cube-face left">100%</div>
           <div class="cube-face top">$</div>
@@ -92,9 +92,9 @@
     <!-- About Section -->
     <section class="about" id="about">
       <div class="about-content">
-        <h2>About RWA Tokenization</h2>
+        <h2>About AQT Tokenization</h2>
         <p>
-          Real World Asset (RWA) tokenization represents a paradigm shift in how we manage and transfer 
+          AI-Quant ETF (AQT) tokenization represents a paradigm shift in how we manage and transfer
           ownership of physical assets. By converting rights to real-world assets into blockchain-based tokens, 
           we enable:
         </p>
@@ -111,7 +111,7 @@
     <!-- CTA Section -->
     <section class="cta">
       <h2>Ready to Explore?</h2>
-      <p>Connect your wallet to access the RWA Token dashboard</p>
+      <p>Connect your wallet to access the AQT Token dashboard</p>
       <button @click="connectWallet" class="btn-cta" :disabled="isLoading">
         {{ isLoading ? '⏳ Connecting...' : 'Launch Dashboard' }}
       </button>
@@ -119,7 +119,7 @@
 
     <!-- Footer -->
     <footer class="footer">
-      <p>RWA Token Demo • Sepolia Testnet • Built with ❤️</p>
+      <p>$AQT Token Demo • Sepolia Testnet • Built with ❤️</p>
       <p class="footer-contract">Contract: {{ shortenAddress(contractAddress) }}</p>
     </footer>
   </div>

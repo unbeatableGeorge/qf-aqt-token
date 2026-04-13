@@ -6,7 +6,7 @@
   <div v-else id="app" class="app-container">
     <header class="app-header">
       <h1 class="logo-link" @click="goToLanding" title="Back to Home">
-        ⛓️ RWA Token
+        ⛓️ AQT Token
       </h1>
       <div class="wallet-section">
         <button 
@@ -247,8 +247,8 @@ let signer = null
 let contract = null
 
 const totalSupply = ref('0')
-const tokenName = ref('Real World Asset Token')
-const tokenSymbol = ref('RWAT')
+const tokenName = ref('AI-Quant ETF Token')
+const tokenSymbol = ref('AQT')
 const tokenDecimals = ref(18)
 const isOwner = ref(false)
 
