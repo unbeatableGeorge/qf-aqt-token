@@ -5,7 +5,7 @@
     <div class="chart-legend">
       <div class="legend-item">
         <span class="legend-color" style="background: #667eea;"></span>
-        <span>RWAT Token</span>
+        <span>AQT Token</span>
       </div>
       <div class="legend-item">
         <span class="legend-color" style="background: #fbbf24;"></span>
@@ -22,7 +22,7 @@ import Chart from 'chart.js/auto'
 const chartCanvas = ref(null)
 let chartInstance = null
 
-// 生成模拟数据 - 模式化RWAT性能优于SPY
+// 生成模拟数据 - 模式化AQT性能优于SPY
 const generateChartData = () => {
   const months = [
     'Jan 2020', 'Apr 2020', 'Jul 2020', 'Oct 2020',
@@ -41,8 +41,8 @@ const generateChartData = () => {
     280, 300, 320, 340, 355, 370
   ]
 
-  // RWAT数据 (更高的增长率 - 展示新兴资产的潜力)
-  const rwatData = [
+  // AQT数据 (更高的增长率 - 展示新兴资产的潜力)
+  const aqtData = [
     0, 25, 55, 80, 120, 160, 190, 220, 150, 170, 180, 210,
     240, 280, 320, 360, 400, 450, 480, 520, 580, 640, 700, 760,
     820, 880, 950, 1020, 1100, 1180
@@ -52,8 +52,8 @@ const generateChartData = () => {
     labels: months,
     datasets: [
       {
-        label: 'RWAT Token',
-        data: rwatData,
+        label: 'AQT Token',
+        data: aqtData,
         borderColor: '#667eea',
         backgroundColor: 'rgba(102, 126, 234, 0.05)',
         borderWidth: 3,

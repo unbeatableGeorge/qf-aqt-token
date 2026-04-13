@@ -1,6 +1,6 @@
-# RWA Token Demo Site (Frontend)
+# AQT Token Demo Site (Frontend)
 
-A Vue 3 + Vite dashboard for interacting with the RWA Token smart contract.
+A Vue 3 + Vite dashboard for interacting with the AQT Token smart contract.
 
 ## Setup
 
