@@ -30,6 +30,9 @@ contract RWAToken {
     // Index mapping to track whitelisted addresses (value is index+1, so 0 = not in list)
     mapping(address => uint256) private whitelistedIndex;
 
+    // Redemption tracking: address => pending redemption amount
+    mapping(address => uint256) private pendingRedemptions;
+
     // Events
     event Transfer(address indexed from, address indexed to, uint256 value);
     event Approval(address indexed owner, address indexed spender, uint256 value);
@@ -38,6 +41,8 @@ contract RWAToken {
     event WhitelistAdded(address indexed addr);
     event WhitelistRemoved(address indexed addr);
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+    event RedemptionInitiated(address indexed user, uint256 amount);
+    event RedemptionApproved(address indexed user, uint256 amount);
 
     modifier onlyOwner() {
         require(msg.sender == owner, "Only owner can call this function");
@@ -151,38 +156,56 @@ contract RWAToken {
     }
 
     /**
-     * @dev Burn tokens from caller's balance
+     * @dev User initiates redemption (equivalent to requesting to burn their tokens)
+     * User cannot directly burn; must initiate redemption first
+     * Owner then approves the redemption by calling approveRedemption
      */
-    function burn(uint256 amount) external returns (bool) {
-        require(balances[msg.sender] >= amount, "Insufficient balance to burn");
+    function initiateRedemption(uint256 amount) external returns (bool) {
+        require(balances[msg.sender] >= amount, "Insufficient balance for redemption");
+        require(amount > 0, "Redemption amount must be greater than 0");
 
-        unchecked {
-            balances[msg.sender] -= amount;
-        }
-        _totalSupply -= amount;
+        // User's tokens are reserved for redemption (locked)
+        pendingRedemptions[msg.sender] += amount;
 
-        emit Burn(msg.sender, amount);
-        emit Transfer(msg.sender, address(0), amount);
+        emit RedemptionInitiated(msg.sender, amount);
         return true;
     }
 
     /**
-     * @dev Burn tokens on behalf of another address (using allowance)
-     * Useful for demonstrating burn as part of redemption flow with approvals
+     * @dev Owner approves redemption and burns the tokens
+     * This is called after confirming off-chain asset redemption is successful
      */
-    function burnFrom(address from, uint256 amount) external returns (bool) {
-        require(balances[from] >= amount, "Insufficient balance to burn");
-        require(allowances[from][msg.sender] >= amount, "Insufficient allowance to burn");
+    function approveRedemption(address user, uint256 amount) external onlyOwner notZeroAddress(user) {
+        require(pendingRedemptions[user] >= amount, "Insufficient pending redemption");
+        require(balances[user] >= amount, "Insufficient balance");
 
+        // Remove from pending redemptions
         unchecked {
-            balances[from] -= amount;
-            allowances[from][msg.sender] -= amount;
+            pendingRedemptions[user] -= amount;
+            balances[user] -= amount;
         }
         _totalSupply -= amount;
 
-        emit Burn(from, amount);
-        emit Transfer(from, address(0), amount);
-        return true;
+        emit RedemptionApproved(user, amount);
+        emit Burn(user, amount);
+        emit Transfer(user, address(0), amount);
+    }
+
+    /**
+     * @dev Cancel redemption if user changes mind (only owner can call)
+     */
+    function cancelRedemption(address user, uint256 amount) external onlyOwner notZeroAddress(user) {
+        require(pendingRedemptions[user] >= amount, "Insufficient pending redemption");
+        unchecked {
+            pendingRedemptions[user] -= amount;
+        }
+    }
+
+    /**
+     * @dev Get pending redemption amount for a user
+     */
+    function getPendingRedemption(address user) external view returns (uint256) {
+        return pendingRedemptions[user];
     }
 
     // ==================== Whitelist Management ====================

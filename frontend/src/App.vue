@@ -107,19 +107,20 @@
             </p>
           </div>
 
-          <!-- Burn (any holder) -->
+          <!-- Redeem (any holder) -->
           <div class="operation">
-            <h4>Burn</h4>
+            <h4>Request Redemption</h4>
             <input 
-              v-model="burnAmount" 
-              placeholder="Amount to burn"
+              v-model="redeemAmount" 
+              placeholder="Amount to redeem"
               type="number"
               class="input"
               :disabled="isLoading"
             />
-            <button @click="executeBurn" class="btn btn-small" :disabled="isLoading">
-              {{ isLoading ? '⏳ Loading...' : 'Burn' }}
+            <button @click="executeRedeem" class="btn btn-small" :disabled="isLoading">
+              {{ isLoading ? '⏳ Loading...' : 'Initiate Redemption' }}
             </button>
+            <p class="info-text">Submit your tokens for redemption. Owner will process after verifying off-chain asset transfer.</p>
           </div>
 
           <!-- Transfer -->
@@ -160,6 +161,26 @@
           <p v-if="newOwnerAddr" class="preview-text">
             New owner: {{ formatAddress(newOwnerAddr) }}
           </p>
+        </card>
+
+        <!-- Pending Redemptions (Owner only) -->
+        <card class="card-pending-redemptions" v-if="isOwner">
+          <h3>⏳ Pending Redemptions</h3>
+          <p class="info-text">Users who have requested redemption. Approve after confirming off-chain asset transfer.</p>
+          <div class="list">
+            <div v-for="(redemption, idx) in pendingRedemptions" :key="idx" class="redemption-item">
+              <div class="redemption-info">
+                <span class="user">{{ formatAddress(redemption.user) }}</span>
+                <span class="amount">{{ redemption.amount }} {{ tokenSymbol }}</span>
+              </div>
+              <button @click="executeApproveRedemption(redemption.user, redemption.amount)" class="btn btn-small btn-approve" :disabled="isLoading">
+                {{ isLoading ? '⏳' : '✓ Approve' }}
+              </button>
+            </div>
+            <div v-if="pendingRedemptions.length === 0" class="empty">
+              No pending redemptions
+            </div>
+          </div>
         </card>
 
         <!-- Transactions -->
@@ -257,12 +278,13 @@ const newWhitelistAddr = ref('')
 const recentTransactions = ref([])
 const blockedTransactions = ref([])
 const distribution = ref([])
+const pendingRedemptions = ref([])
 const isLoading = ref(false)
 
 // Form inputs
 const mintTo = ref('')
 const mintAmount = ref('')
-const burnAmount = ref('')
+const redeemAmount = ref('')
 const transferTo = ref('')
 const transferAmount = ref('')
 const newOwnerAddr = ref('')
@@ -299,7 +321,11 @@ const CONTRACT_ABI = [
   {'inputs': [], 'name': 'totalSupply', 'outputs': [{'internalType': 'uint256', 'name': '', 'type': 'uint256'}], 'stateMutability': 'view', 'type': 'function'},
   {'inputs': [{'internalType': 'address', 'name': 'to', 'type': 'address'}, {'internalType': 'uint256', 'name': 'amount', 'type': 'uint256'}], 'name': 'transfer', 'outputs': [{'internalType': 'bool', 'name': '', 'type': 'bool'}], 'stateMutability': 'nonpayable', 'type': 'function'},
   {'inputs': [{'internalType': 'address', 'name': 'from', 'type': 'address'}, {'internalType': 'address', 'name': 'to', 'type': 'address'}, {'internalType': 'uint256', 'name': 'amount', 'type': 'uint256'}], 'name': 'transferFrom', 'outputs': [{'internalType': 'bool', 'name': '', 'type': 'bool'}], 'stateMutability': 'nonpayable', 'type': 'function'},
-  {'inputs': [{'internalType': 'address', 'name': 'newOwner', 'type': 'address'}], 'name': 'transferOwnership', 'outputs': [], 'stateMutability': 'nonpayable', 'type': 'function'}
+  {'inputs': [{'internalType': 'address', 'name': 'newOwner', 'type': 'address'}], 'name': 'transferOwnership', 'outputs': [], 'stateMutability': 'nonpayable', 'type': 'function'},
+  {'inputs': [{'internalType': 'uint256', 'name': 'amount', 'type': 'uint256'}], 'name': 'initiateRedemption', 'outputs': [{'internalType': 'bool', 'name': '', 'type': 'bool'}], 'stateMutability': 'nonpayable', 'type': 'function'},
+  {'inputs': [{'internalType': 'address', 'name': 'user', 'type': 'address'}, {'internalType': 'uint256', 'name': 'amount', 'type': 'uint256'}], 'name': 'approveRedemption', 'outputs': [], 'stateMutability': 'nonpayable', 'type': 'function'},
+  {'inputs': [{'internalType': 'address', 'name': 'user', 'type': 'address'}], 'name': 'getPendingRedemption', 'outputs': [{'internalType': 'uint256', 'name': '', 'type': 'uint256'}], 'stateMutability': 'view', 'type': 'function'},
+  {'inputs': [{'internalType': 'address', 'name': 'user', 'type': 'address'}, {'internalType': 'uint256', 'name': 'amount', 'type': 'uint256'}], 'name': 'cancelRedemption', 'outputs': [], 'stateMutability': 'nonpayable', 'type': 'function'}
 ]
 
 // Switch to Sepolia network
@@ -423,8 +449,11 @@ const loadContractData = async () => {
     isOwner.value = currentAccount.value?.toLowerCase() === owner.toLowerCase()
     whitelistedAddresses.value = whitelist
 
-    // Load distribution and wait for it to complete
-    await loadDistribution(whitelist)
+    // Load distribution and pending redemptions
+    await Promise.all([
+      loadDistribution(whitelist),
+      loadPendingRedemptions(whitelist)
+    ])
   } catch (error) {
     console.error('Error loading contract data:', error)
   } finally {
@@ -464,6 +493,40 @@ const loadDistribution = async (addresses) => {
     distribution.value = distributions
   } catch (error) {
     console.error('Error loading distribution:', error)
+  }
+}
+
+const loadPendingRedemptions = async (addresses) => {
+  try {
+    if (!addresses || addresses.length === 0 || !isOwner.value) {
+      pendingRedemptions.value = []
+      return
+    }
+
+    const pending = []
+    
+    // Fetch all pending redemptions in parallel
+    const redemptionAmounts = await Promise.all(
+      addresses.map(addr => contract.getPendingRedemption(addr).catch(e => {
+        console.error(`Error fetching pending redemption for ${addr}:`, e)
+        return 0n
+      }))
+    )
+
+    // Build pending redemptions array (only show those with pending amount > 0)
+    for (let i = 0; i < addresses.length; i++) {
+      const amount = redemptionAmounts[i]
+      if (amount > 0n) {
+        pending.push({
+          user: addresses[i],
+          amount: ethers.formatUnits(amount, tokenDecimals.value)
+        })
+      }
+    }
+
+    pendingRedemptions.value = pending
+  } catch (error) {
+    console.error('Error loading pending redemptions:', error)
   }
 }
 
@@ -508,20 +571,36 @@ const executeMint = async () => {
   }
 }
 
-const executeBurn = async () => {
-  if (!burnAmount.value) return
+const executeRedeem = async () => {
+  if (!redeemAmount.value) return
 
   isLoading.value = true
   try {
-    const amount = ethers.parseUnits(String(burnAmount.value), Number(tokenDecimals.value))
-    const tx = await contract.burn(amount)
-    recordTransaction('Burn', tx.hash)
+    const amount = ethers.parseUnits(String(redeemAmount.value), Number(tokenDecimals.value))
+    const tx = await contract.initiateRedemption(amount)
+    recordTransaction('Initiate Redemption', tx.hash)
     await tx.wait()
-    burnAmount.value = ''
+    redeemAmount.value = ''
     await loadContractData()
   } catch (error) {
     recordBlockedTransaction(currentAccount.value, ethers.ZeroAddress, error.message)
-    console.error('Error burning:', error)
+    console.error('Error initiating redemption:', error)
+  } finally {
+    isLoading.value = false
+  }
+}
+
+const executeApproveRedemption = async (user, amount) => {
+  isLoading.value = true
+  try {
+    const amountBigInt = ethers.parseUnits(String(amount), Number(tokenDecimals.value))
+    const tx = await contract.approveRedemption(user, amountBigInt)
+    recordTransaction('Approve Redemption', tx.hash)
+    await tx.wait()
+    await loadContractData()
+  } catch (error) {
+    recordBlockedTransaction(currentAccount.value, user, error.message)
+    console.error('Error approving redemption:', error)
   } finally {
     isLoading.value = false
   }
